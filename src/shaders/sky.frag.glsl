@@ -57,7 +57,7 @@ void main() {
   // --- lunar biome: airless black sky. The Earth is just the MOON's disc with
   // a blue-marble texture — same simple, smoothly-rotating behaviour. ---
   if (uEarth > 0.5) {
-    // hard brilliant sun disc + tight corona (tracks uLightDir like everything)
+    // sun disc tracks uLightDir, like every other sky — the only moving thing
     col += vec3(1.0, 0.98, 0.92) * (smoothstep(0.9986, 0.9992, sd) + pow(max(sd, 0.0), 350.0) * 0.5);
 
     // stars fixed to the dome
@@ -67,21 +67,15 @@ void main() {
       col += vec3(step(0.992, s)) * smoothstep(0.02, 0.25, dir.y);
     }
 
-    // Earth = moon disc, opposite the sun, with a textured surface
-    float ed = dot(dir, normalize(-uLightDir));
-    float disc = smoothstep(0.9965, 0.9978, ed);
-    if (disc > 0.0) {
-      // surface pattern from the view direction's offset within the disc
-      vec2 luv = dir.xy + dir.zy;
-      float land = step(0.5, fract(sin(dot(floor(luv * 90.0), vec2(7.1, 3.7))) * 4181.0));
-      vec3 ocean = vec3(0.16, 0.34, 0.62);
-      vec3 landC = vec3(0.30, 0.46, 0.32);
-      vec3 cloud = vec3(0.85, 0.88, 0.92);
-      float cl = step(0.7, fract(sin(dot(floor(luv * 40.0), vec2(2.3, 9.4))) * 9133.0));
-      vec3 earthCol = mix(mix(ocean, landC, land), cloud, cl * 0.6);
-      col = mix(col, earthCol, disc);
-    }
-    col += vec3(0.3, 0.45, 0.7) * pow(max(ed, 0.0), 300.0) * 0.3; // halo
+    // Earth: a calm blue marble pinned to a FIXED point in the dome — it does
+    // not move, so nothing can rotate strangely. Just a quiet backdrop detail.
+    vec3 earthDir = normalize(vec3(0.5, 0.55, -0.65));
+    float ed = dot(dir, earthDir);
+    float disc = smoothstep(0.9965, 0.9980, ed);
+    vec3 earthCol = mix(vec3(0.18, 0.36, 0.62), vec3(0.32, 0.48, 0.38),
+                        step(0.5, fract(sin(dot(floor(dir.xy * 70.0), vec2(7.1, 3.7))) * 4181.0)));
+    col = mix(col, earthCol, disc);
+    col += vec3(0.3, 0.45, 0.7) * pow(max(ed, 0.0), 300.0) * 0.25; // soft halo
   }
 
   // band the sky to match the terrain's posterised look, but dither the
