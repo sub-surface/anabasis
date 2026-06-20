@@ -677,9 +677,13 @@ $('shot').onclick = () => {
 
   if (mmInExport && sourceImage) {
     drawMinimap()
-    const m = Math.round(h * 0.16), pad = Math.round(h * 0.02)
+    // preserve the minimap's true aspect ratio (it conforms to the image)
+    const pad = Math.round(h * 0.02)
+    const mmAr = minimap.width / minimap.height
+    const mh = Math.round(h * 0.16)
+    const mw = Math.round(mh * mmAr)
     ctx.globalAlpha = 0.85
-    ctx.drawImage(minimap, w - m - pad, h - m - pad, m, m)
+    ctx.drawImage(minimap, w - mw - pad, h - mh - pad, mw, mh)
     ctx.globalAlpha = 1
   }
   if (watermark) {

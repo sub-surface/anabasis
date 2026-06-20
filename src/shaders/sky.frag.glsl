@@ -55,6 +55,13 @@ void main() {
 
   // --- lunar biome: airless black sky, permanent stars + a hanging Earth ---
   if (uEarth > 0.5) {
+    // airless: the sun is a hard brilliant disc with a tight corona that
+    // tracks time-of-day. (No atmosphere, so the SKY colour can't rotate —
+    // only the sun, Earth-light and terrain shadows move.)
+    float sunDisc = smoothstep(0.9986, 0.9992, sd);
+    float corona = pow(max(sd, 0.0), 350.0);
+    col += vec3(1.0, 0.98, 0.92) * (sunDisc * 2.5 + corona * 0.5);
+
     // stars everywhere above the horizon (no atmosphere to wash them out)
     if (dir.y > 0.05) {
       vec2 g = floor(dir.xz * 140.0);
