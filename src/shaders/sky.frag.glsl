@@ -36,7 +36,7 @@ void main() {
   float glow = pow(max(sd, 0.0), 64.0) * 0.6;        // soft halo
   col += uSunColor * (sun * 1.4 + glow);
 
-  // --- moon at night: opposite the sun, pale, with a faint ring ---
+  // --- moon at night: opposite the sun, with stars that wheel alongside it ---
   if (uNight > 0.4) {
     float md = dot(dir, normalize(-uLightDir));
     float moon = smoothstep(0.9980, 0.9992, md);
@@ -44,52 +44,60 @@ void main() {
     vec3 moonCol = vec3(0.82, 0.85, 0.92);
     col += moonCol * (moon * 1.1 + mglow) * smoothstep(0.4, 0.8, uNight);
 
-    // a scatter of cheap stars high in the sky
-    if (dir.y > 0.2) {
-      vec2 g = floor(dir.xz * 120.0);
+    // stars fixed to the celestial sphere (rotating frame), so they wheel
+    // together with the moon as time-of-day advances — not pinned to the view.
+    if (dir.y > 0.18) {
+      vec3 S = normalize(uLightDir);
+      vec3 E = normalize(cross(S, vec3(0.0, 1.0, 0.0)) + vec3(0.0001));
+      vec3 U = normalize(cross(E, S));
+      vec2 g = floor(vec2(dot(dir, E), dot(dir, U)) * 130.0);
       float s = fract(sin(dot(g, vec2(12.99, 78.23))) * 43758.55);
-      float star = step(0.997, s) * smoothstep(0.4, 1.0, uNight) * smoothstep(0.2, 0.5, dir.y);
+      float star = step(0.997, s) * smoothstep(0.4, 1.0, uNight) * smoothstep(0.18, 0.45, dir.y);
       col += vec3(star);
     }
   }
 
-  // --- lunar biome: airless black sky, permanent stars + a hanging Earth ---
+  // --- lunar biome: airless black sky. Sun, stars and Earth form one
+  // celestial sphere that rotates together with time-of-day (uLightDir). ---
   if (uEarth > 0.5) {
-    // airless: the sun is a hard brilliant disc with a tight corona that
-    // tracks time-of-day. (No atmosphere, so the SKY colour can't rotate —
-    // only the sun, Earth-light and terrain shadows move.)
+    // a basis that rotates WITH the sun, so everything tracks together
+    vec3 S = normalize(uLightDir);                       // sun direction
+    vec3 E = normalize(cross(S, vec3(0.0, 1.0, 0.0)) + vec3(0.0001));
+    vec3 U = normalize(cross(E, S));
+    // sample direction expressed in the rotating celestial frame
+    vec3 cel = vec3(dot(dir, E), dot(dir, U), dot(dir, S));
+
+    // hard brilliant sun disc + tight corona
     float sunDisc = smoothstep(0.9986, 0.9992, sd);
     float corona = pow(max(sd, 0.0), 350.0);
     col += vec3(1.0, 0.98, 0.92) * (sunDisc * 2.5 + corona * 0.5);
 
-    // stars everywhere above the horizon (no atmosphere to wash them out)
-    if (dir.y > 0.05) {
-      vec2 g = floor(dir.xz * 140.0);
+    // stars fixed to the celestial sphere (so they wheel with the sun)
+    if (dir.y > 0.02) {
+      vec2 g = floor(cel.xy * 150.0);
       float s = fract(sin(dot(g, vec2(12.99, 78.23))) * 43758.55);
-      col += vec3(step(0.992, s)) * smoothstep(0.05, 0.3, dir.y);
+      col += vec3(step(0.992, s)) * smoothstep(0.02, 0.25, dir.y);
     }
-    // Earth: a fixed blue marble high in one quarter of the sky
-    vec3 earthDir = normalize(vec3(0.45, 0.62, -0.65));
+
+    // Earth: a blue marble at a fixed point on the celestial sphere, ~120°
+    // from the sun — so it rises and sets along with everything else.
+    vec3 earthDir = normalize(E * 0.6 + U * 0.7 - S * 0.4);
     float ed = dot(dir, earthDir);
     float disc = smoothstep(0.9965, 0.9978, ed);
     if (disc > 0.0) {
-      // crude continents/ocean from noise-ish bands on the disc surface.
-      // 'local' is the offset from the Earth's centre direction; use its 2D
-      // projection (xy) for the surface pattern lookups.
       vec3 local = dir - earthDir;
-      vec2 luv = local.xy * vec2(1.0, 1.0);
+      vec2 luv = vec2(dot(local, E), dot(local, U));     // surface coords in frame
       float land = step(0.5, fract(sin(dot(floor(luv * 600.0), vec2(7.1, 3.7))) * 4181.0));
       vec3 ocean = vec3(0.16, 0.34, 0.62);
       vec3 landC = vec3(0.30, 0.46, 0.32);
       vec3 cloud = vec3(0.85, 0.88, 0.92);
       float cl = step(0.7, fract(sin(dot(floor(luv * 250.0), vec2(2.3, 9.4))) * 9133.0));
       vec3 earthCol = mix(mix(ocean, landC, land), cloud, cl * 0.6);
-      // simple day/night terminator across the marble
-      float lit = smoothstep(-0.3, 0.4, dot(earthDir, normalize(uLightDir)));
+      // terminator: the Earth's lit side faces the sun
+      float lit = smoothstep(-0.3, 0.5, dot(earthDir, S));
       col = mix(col, earthCol * (0.3 + 0.7 * lit), disc);
     }
-    float glow = pow(max(ed, 0.0), 600.0) * 0.25;       // faint halo
-    col += vec3(0.3, 0.45, 0.7) * glow;
+    col += vec3(0.3, 0.45, 0.7) * pow(max(ed, 0.0), 600.0) * 0.25; // halo
   }
 
   // band the sky to match the terrain's posterised look, but dither the
