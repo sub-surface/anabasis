@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>ANABASIS — a march inland from the image</title>
+    <meta name="description" content="Drop an image. The machine forgets it and hallucinates a world. A PS1-era topographic apparatus, after Joan Fontcuberta." />
+
+    <!-- Open Graph: a screenshot of a generated landscape, not the source image -->
+    <meta property="og:title" content="ANABASIS" />
+    <meta property="og:description" content="Drop an image. The machine forgets it and hallucinates a world." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://anabasis.subsurfaces.net" />
+    <meta property="og:image" content="https://anabasis.subsurfaces.net/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ANABASIS" />
+    <meta name="twitter:description" content="Drop an image. The machine forgets it and hallucinates a world." />
+    <meta name="twitter:image" content="https://anabasis.subsurfaces.net/og.png" />
+
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+
+    <div id="ui">
+      <header id="title">
+        <h1>ANABASIS</h1>
+        <button id="about-toggle" aria-label="about this project">about</button>
+        <div id="about" class="about" hidden>
+          <p>Feed the machine a photograph and it forgets the photograph. What survives is only the brightness of each pixel, which the renderer reads as elevation &mdash; and from that it hallucinates the one kind of world it knows how to make: a terrain, fogged and memoryless, that was never anywhere.</p>
+          <p><em>Anabasis</em> &mdash; from Xenophon &mdash; means a march up from the coast into the interior; a going-inland, an ascent. It felt right for a tool you enter at the shore of an image and climb into, away from whatever the picture once meant.</p>
+          <p>The piece is after Joan Fontcuberta's <em>Orogenesis</em> (2002&ndash;2006), where he fed paintings by Turner and C&eacute;zanne into military terrain software built to read maps. I keep coming back to it because it's the cleanest demonstration that an image is just data a system is free to misread &mdash; the medium really is the message. As a documentary photographer that idea unsettles me in a good way: here my own pictures get stripped of their witness and re-grown as landscape that remembers nothing.</p>
+          <p class="links">
+            <a href="https://en.wikipedia.org/wiki/Anabasis_(Xenophon)" target="_blank" rel="noopener">Anabasis &middot; Xenophon &rarr;</a>
+            <span>&middot;</span>
+            <a href="https://www.artsy.net/show/photo-edition-berlin-joan-fontcuberta-orogenesis-landscapes-without-memory" target="_blank" rel="noopener">Fontcuberta &rarr;</a>
+            <span>&middot;</span>
+            <a href="https://subsurfaces.net" target="_blank" rel="noopener">subsurfaces.net</a>
+          </p>
+        </div>
+      </header>
+
+      <div id="hint" class="panel">
+        <p><strong>drop an image</strong> anywhere &middot; or click to choose</p>
+        <p class="keys">WASD move &middot; drag look &middot; Q/E down/up &middot; Shift boost</p>
+      </div>
+
+      <aside id="panel" class="dock">
+        <button id="dock-toggle" class="dock-head">
+          <span>anabasis</span><span class="chev">&#8250;</span>
+        </button>
+        <div id="dock-body" class="dock-body">
+          <div class="tabs">
+            <button class="tab active" data-tab="world">world</button>
+            <button class="tab" data-tab="capture">capture</button>
+          </div>
+
+          <!-- ===================== WORLD TAB ===================== -->
+          <div class="tab-panel" data-panel="world">
+            <div class="btn-row">
+              <button id="import" class="primary import">import image</button>
+              <button id="random" class="primary dice" title="randomise world">&#9860;</button>
+            </div>
+
+            <label class="ctl">
+              <span class="ctl-name">relief <em id="v-relief"></em></span>
+              <input id="relief" type="range" min="0" max="100" value="50" />
+            </label>
+            <label class="ctl">
+              <span class="ctl-name">water <em id="v-water"></em></span>
+              <input id="water" type="range" min="0" max="100" value="38" />
+            </label>
+            <label class="ctl">
+              <span class="ctl-name">fog <em id="v-fog"></em></span>
+              <input id="fog" type="range" min="0" max="100" value="22" />
+            </label>
+            <label class="ctl">
+              <span class="ctl-name">time of day</span>
+              <input id="tod" type="range" min="0" max="100" value="42" />
+            </label>
+            <label class="ctl">
+              <span class="ctl-name">biome</span>
+              <select id="biome">
+                <option value="alpine" selected>alpine</option>
+                <option value="desert">desert</option>
+                <option value="tundra">tundra</option>
+                <option value="volcanic">volcanic</option>
+                <option value="verdant">verdant</option>
+                <option value="coral">coral</option>
+                <option value="saltflat">salt flat</option>
+                <option value="lunar">lunar</option>
+                <option value="megastructure">megastructure</option>
+                <option value="toxic">toxic</option>
+              </select>
+            </label>
+            <label class="ctl">
+              <span class="ctl-name">weather</span>
+              <select id="weather">
+                <option value="clear">clear</option>
+                <option value="fog" selected>fog</option>
+                <option value="rain">rain</option>
+              </select>
+            </label>
+            <label class="ctl">
+              <span class="ctl-name">render style</span>
+              <select id="style">
+                <option value="solid" selected>solid</option>
+                <option value="scan">wireframe scan</option>
+              </select>
+            </label>
+            <label class="ctl ctl-row">
+              <span class="ctl-name">cinematic drift</span>
+              <input id="drift" type="checkbox" />
+            </label>
+
+            <button id="adv-toggle" class="adv-head">advanced <span class="chev">&#8250;</span></button>
+            <div id="adv-body" class="adv-body" hidden>
+              <label class="ctl">
+                <span class="ctl-name">relief curve</span>
+                <select id="curve">
+                  <option value="0" selected>linear</option>
+                  <option value="1">eroded</option>
+                  <option value="2">terraced</option>
+                  <option value="3">ridged</option>
+                </select>
+              </label>
+              <label class="ctl">
+                <span class="ctl-name">surface detail <em id="v-detail"></em></span>
+                <input id="detail" type="range" min="0" max="100" value="55" />
+              </label>
+              <label class="ctl">
+                <span class="ctl-name">aerial haze <em id="v-haze"></em></span>
+                <input id="haze" type="range" min="0" max="100" value="60" />
+              </label>
+              <label class="ctl">
+                <span class="ctl-name">ecology <em id="v-eco"></em></span>
+                <input id="eco" type="range" min="0" max="100" value="50" />
+              </label>
+              <label class="ctl">
+                <span class="ctl-name">glitch <em id="v-glitch"></em></span>
+                <input id="glitch" type="range" min="0" max="100" value="0" />
+              </label>
+              <label class="ctl">
+                <span class="ctl-name">snow line <em id="v-snow"></em></span>
+                <input id="snow" type="range" min="0" max="100" value="72" />
+              </label>
+              <label class="ctl">
+                <span class="ctl-name">vertex wobble <em id="v-snap"></em></span>
+                <input id="snap" type="range" min="20" max="200" value="90" />
+              </label>
+              <label class="ctl ctl-row">
+                <span class="ctl-name">colour residue</span>
+                <input id="tint" type="checkbox" checked />
+              </label>
+            </div>
+
+            <button id="share" class="primary share">copy share link</button>
+          </div>
+
+          <!-- ===================== CAPTURE TAB ===================== -->
+          <div class="tab-panel" data-panel="capture" hidden>
+            <p class="tab-note">live view runs lean; captures render at these settings for one frame.</p>
+
+            <label class="ctl">
+              <span class="ctl-name">focal length <em id="v-focal"></em></span>
+              <input id="focal" type="range" min="14" max="180" value="20" />
+            </label>
+            <label class="ctl">
+              <span class="ctl-name">live resolution <em id="v-res"></em></span>
+              <input id="res" type="range" min="25" max="100" value="50" />
+            </label>
+            <label class="ctl">
+              <span class="ctl-name">capture resolution <em id="v-cap"></em></span>
+              <input id="cap" type="range" min="100" max="300" value="100" />
+            </label>
+            <label class="ctl ctl-row">
+              <span class="ctl-name">depth of field</span>
+              <input id="dof" type="checkbox" />
+            </label>
+            <label class="ctl ctl-row">
+              <span class="ctl-name">isometric view</span>
+              <input id="iso" type="checkbox" />
+            </label>
+            <label class="ctl ctl-row">
+              <span class="ctl-name">minimap on screen</span>
+              <input id="mm" type="checkbox" checked />
+            </label>
+            <label class="ctl ctl-row">
+              <span class="ctl-name">minimap in export</span>
+              <input id="mmExport" type="checkbox" checked />
+            </label>
+            <label class="ctl ctl-row">
+              <span class="ctl-name">watermark export</span>
+              <input id="wm" type="checkbox" />
+            </label>
+
+            <button id="shot" class="primary">capture frame</button>
+          </div>
+        </div>
+      </aside>
+
+      <button id="hideui" title="hide interface (H)">hide ui</button>
+      <canvas id="minimap" width="128" height="128" hidden></canvas>
+      <input id="file" type="file" accept="image/*" hidden />
+      <div id="loading" class="panel" hidden>forming terrain&hellip;</div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
