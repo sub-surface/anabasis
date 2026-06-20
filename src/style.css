@@ -85,6 +85,19 @@ body:active { cursor: grabbing; }
   backdrop-filter: blur(3px);
   animation: rise 0.25s ease-out;
 }
+.about-tabs { display: flex; gap: 0; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
+.atab {
+  background: none; border: none; color: var(--ink); opacity: 0.5;
+  padding: 0 0 6px; margin-right: 16px;
+  font-size: 9px; letter-spacing: 0.25em; text-transform: uppercase; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.atab:hover { opacity: 0.85; background: none; }
+.atab.active { opacity: 1; border-bottom-color: var(--ink); }
+.keymap { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; margin-bottom: 10px; }
+.keymap dt { font-weight: 600; opacity: 0.95; white-space: nowrap; }
+.keymap dd { opacity: 0.7; margin: 0; }
+.about .mini { font-size: 11px; opacity: 0.7; line-height: 1.6; }
 .about p { margin-bottom: 9px; opacity: 0.9; }
 .about .links { display: flex; gap: 8px; flex-wrap: wrap; opacity: 0.8; margin-bottom: 0; }
 .about a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line); }

@@ -23,6 +23,8 @@ const canvas = document.getElementById('scene')
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: true })
 renderer.setPixelRatio(1) // never go retina — we WANT chunky pixels
 let lowres = true
+let capturing = false     // true for the one-frame high-res capture render
+let captureScale = 1      // capture supersample factor (set by the 'cap' slider)
 
 const scene = new THREE.Scene()
 scene.background = FOG_COLOR
@@ -91,6 +93,7 @@ const skyUniforms = {
   uSkyTop:     { value: new THREE.Color(0x2a3a55) },
   uSkyHorizon: { value: new THREE.Color(0x9aa0a4) },
   uNight:      { value: 0 },
+  uEarth:      { value: 0 },
 }
 const sky = new THREE.Mesh(
   new THREE.SphereGeometry(1, 24, 16),
@@ -281,11 +284,21 @@ function loadImage(src) {
     sourceImage = img            // keep for the minimap
     sizeMinimap()
     loading.hidden = true
-    document.getElementById('hint').style.opacity = '0'
+    // hide the hint when the USER imports an image; on the pre-loaded default
+    // world, leave it up briefly so newcomers see the controls (it's timed-out
+    // separately below).
+    if (!isDefaultLoad) document.getElementById('hint').style.opacity = '0'
+    isDefaultLoad = false
   }
   img.onerror = () => { loading.textContent = 'could not read image'; }
   img.src = src
 }
+let isDefaultLoad = true
+// fade the controls hint after a grace period so it's always seen on load
+setTimeout(() => {
+  const h = document.getElementById('hint')
+  if (h) h.style.opacity = '0'
+}, 8000)
 
 // default world — your photograph, pre-loaded
 loadImage('/default-source.png')
@@ -418,10 +431,18 @@ $('style').onchange = e => {
   sky.visible = !scan                   // scan floats over black space
   scene.background = scan ? new THREE.Color(0x000308) : uniforms.uFogColor.value
 }
+let weatherMode = 'fog', rainSpeed = 240
 $('weather').onchange = e => {
   const w = e.target.value
-  rain.visible = w === 'rain'
-  const dens = w === 'clear' ? 0.12 : w === 'rain' ? 0.85 : 0.42
+  weatherMode = w
+  const precip = w === 'rain' || w === 'snow' || w === 'storm'
+  rain.visible = precip
+  // snow drifts white & slow; rain/storm streak grey & fast
+  const snowy = w === 'snow'
+  rain.material.color.setHex(snowy ? 0xeef2f6 : 0xbfc6cc)
+  rain.material.size = snowy ? 2.2 : 1.2
+  rainSpeed = snowy ? 60 : 240
+  const dens = { clear: 0.12, fog: 0.42, rain: 0.85, snow: 0.6, storm: 1.0 }[w]
   uniforms.uFogDensity.value = dens
   $('fog').value = dens / 1.4 * 100
   setReadout('v-fog', Math.round($('fog').value))
@@ -468,6 +489,7 @@ $('biome').onchange = e => {
   uniforms.uBiome.value = biomeIdx
   applyBiomeSky(biomeIdx)
   waterUniforms.uWaterColor.value.setHex(WATER_BIOMES[biomeIdx])
+  skyUniforms.uEarth.value = biomeIdx === 7 ? 1 : 0   // lunar: hang the Earth
 }
 
 // advanced
@@ -482,7 +504,6 @@ $('res').oninput  = e => { lowresScale = e.target.value / 100; setReadout('v-res
 $('tint').onchange= e => { uniforms.uTint.value = e.target.checked ? 0.16 : 0.0 }
 
 // capture resolution: supersample factor applied only during capture
-let captureScale = 1
 $('cap').oninput = e => { captureScale = e.target.value / 100; setReadout('v-cap', e.target.value + '%') }
 
 // tab switching
@@ -509,9 +530,17 @@ addEventListener('keydown', e => {
 function focalToFov(mm) { return 2 * Math.atan(24 / (2 * mm)) * 180 / Math.PI }
 $('focal').oninput = e => {
   const mm = parseInt(e.target.value)
-  camera.fov = focalToFov(mm)
-  camera.updateProjectionMatrix()
-  setReadout('v-focal', mm + 'mm')
+  if (isoMode) {
+    // in ortho, the same slider drives zoom (span): 14mm->wide, 180mm->tight
+    const t = (mm - e.target.min) / (e.target.max - e.target.min)
+    isoZoom = THREE.MathUtils.lerp(1.4, 0.18, t)
+    frameOrtho()
+    setReadout('v-focal', Math.round(t * 100) + '%')
+  } else {
+    camera.fov = focalToFov(mm)
+    camera.updateProjectionMatrix()
+    setReadout('v-focal', mm + 'mm')
+  }
 }
 
 // depth of field: applied only on capture (free — real-time would cost frames)
@@ -519,7 +548,13 @@ let dofOnCapture = false
 $('dof').onchange = e => { dofOnCapture = e.target.checked }
 
 // isometric / orthographic view
-$('iso').onchange = e => { isoMode = e.target.checked; frameOrtho() }
+$('iso').onchange = e => {
+  isoMode = e.target.checked
+  frameOrtho()
+  // the focal slider becomes a zoom control in orthographic view
+  $('focal-label').textContent = isoMode ? 'zoom' : 'focal length'
+  $('focal').dispatchEvent(new Event('input')) // refresh readout for the new mode
+}
 
 // minimap + export options
 $('mm').onchange = e => { minimap.hidden = !e.target.checked }
@@ -561,6 +596,13 @@ $('adv-toggle').onclick = () => {
 
 // about infobox
 $('about-toggle').onclick = () => { $('about').hidden = !$('about').hidden }
+// about/controls sub-tabs
+document.querySelectorAll('.atab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.atab').forEach(x => x.classList.toggle('active', x === t))
+    document.querySelectorAll('.atab-panel').forEach(p => { p.hidden = p.dataset.apanel !== t.dataset.atab })
+  }
+})
 
 // --- permalink: encode every control into the URL hash, restore on load ---
 // (the imported image can't fit in a URL, so a shared link restores all the
@@ -706,7 +748,6 @@ function applyDepthOfField(srcCanvas) {
 
 // ---------------------------------------------------------------------------
 // resize honours the low-res lever (and the capture supersample factor)
-let capturing = false
 function resize() {
   const scale = capturing ? captureScale : (lowres ? lowresScale : 1)
   const w = Math.floor(innerWidth * scale)
@@ -724,20 +765,46 @@ resize()
 
 // ---------------------------------------------------------------------------
 // loop
+let lightning = 0          // decaying flash brightness for storm
+let lightningTimer = 1.5
+const _fogBase = new THREE.Color()
 const clock = new THREE.Clock()
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05)
   uniforms.uTime.value += dt
   if (!isoMode) updateCamera(dt)
+
   if (rain.visible) {
+    const drift = weatherMode === 'snow' ? 18 : 0
     const p = rain.geometry.attributes.position
     for (let i = 0; i < p.count; i++) {
-      let y = p.getY(i) - 220 * dt
+      let y = p.getY(i) - rainSpeed * dt
+      if (drift) p.setX(i, p.getX(i) + Math.sin(uniforms.uTime.value + i) * drift * dt)
       if (y < 0) y = 300
       p.setY(i, y)
     }
     p.needsUpdate = true
   }
+
+  // storm: occasional lightning that briefly whitens the fog/sky
+  if (weatherMode === 'storm') {
+    lightningTimer -= dt
+    if (lightningTimer <= 0) { lightning = 1; lightningTimer = 2 + Math.sin(uniforms.uTime.value) + 2 }
+    if (lightning > 0) {
+      lightning = Math.max(0, lightning - dt * 3)
+      _fogBase.copy(uniforms.uFogColor.value)
+      const flashAmt = lightning * lightning * 0.8
+      uniforms.uFogColor.value.lerp(new THREE.Color(0xdfe6ef), flashAmt)
+      if (sky.visible) scene.background.copy(uniforms.uFogColor.value)
+      renderer.render(scene, activeCam())
+      uniforms.uFogColor.value.copy(_fogBase)        // restore so it doesn't accumulate
+      if (sky.visible && uniforms.uScan.value < 0.5) scene.background.copy(_fogBase)
+      if (!minimap.hidden) drawMinimap()
+      requestAnimationFrame(tick)
+      return
+    }
+  }
+
   renderer.render(scene, activeCam())
   if (!minimap.hidden) drawMinimap()
   requestAnimationFrame(tick)

@@ -27,16 +27,35 @@
         <h1>ANABASIS</h1>
         <button id="about-toggle" aria-label="about this project">about</button>
         <div id="about" class="about" hidden>
-          <p>Feed the machine a photograph and it forgets the photograph. What survives is only the brightness of each pixel, which the renderer reads as elevation &mdash; and from that it hallucinates the one kind of world it knows how to make: a terrain, fogged and memoryless, that was never anywhere.</p>
-          <p><em>Anabasis</em> &mdash; from Xenophon &mdash; means a march up from the coast into the interior; a going-inland, an ascent. It felt right for a tool you enter at the shore of an image and climb into, away from whatever the picture once meant.</p>
-          <p>The piece is after Joan Fontcuberta's <em>Orogenesis</em> (2002&ndash;2006), where he fed paintings by Turner and C&eacute;zanne into military terrain software built to read maps. I keep coming back to it because it's the cleanest demonstration that an image is just data a system is free to misread &mdash; the medium really is the message. As a documentary photographer that idea unsettles me in a good way: here my own pictures get stripped of their witness and re-grown as landscape that remembers nothing.</p>
-          <p class="links">
-            <a href="https://en.wikipedia.org/wiki/Anabasis_(Xenophon)" target="_blank" rel="noopener">Anabasis &middot; Xenophon &rarr;</a>
-            <span>&middot;</span>
-            <a href="https://www.artsy.net/show/photo-edition-berlin-joan-fontcuberta-orogenesis-landscapes-without-memory" target="_blank" rel="noopener">Fontcuberta &rarr;</a>
-            <span>&middot;</span>
-            <a href="https://subsurfaces.net" target="_blank" rel="noopener">subsurfaces.net</a>
-          </p>
+          <div class="about-tabs">
+            <button class="atab active" data-atab="story">about</button>
+            <button class="atab" data-atab="controls">controls</button>
+          </div>
+
+          <div class="atab-panel" data-apanel="story">
+            <p>Feed the machine a photograph and it forgets the photograph. What survives is only the brightness of each pixel, which the renderer reads as elevation &mdash; and from that it hallucinates the one kind of world it knows how to make: a terrain, fogged and memoryless, that was never anywhere.</p>
+            <p><em>Anabasis</em> &mdash; from Xenophon &mdash; means a march up from the coast into the interior; a going-inland, an ascent. It felt right for a tool you enter at the shore of an image and climb into, away from whatever the picture once meant.</p>
+            <p>The piece is after Joan Fontcuberta's <em>Orogenesis</em> (2002&ndash;2006), where he fed paintings by Turner and C&eacute;zanne into military terrain software built to read maps. I keep coming back to it because it's the cleanest demonstration that an image is just data a system is free to misread &mdash; the medium really is the message. As a documentary photographer that idea unsettles me in a good way: here my own pictures get stripped of their witness and re-grown as landscape that remembers nothing.</p>
+            <p class="links">
+              <a href="https://en.wikipedia.org/wiki/Anabasis_(Xenophon)" target="_blank" rel="noopener">Anabasis &middot; Xenophon &rarr;</a>
+              <span>&middot;</span>
+              <a href="https://www.artsy.net/show/photo-edition-berlin-joan-fontcuberta-orogenesis-landscapes-without-memory" target="_blank" rel="noopener">Fontcuberta &rarr;</a>
+              <span>&middot;</span>
+              <a href="https://subsurfaces.net" target="_blank" rel="noopener">subsurfaces.net</a>
+            </p>
+          </div>
+
+          <div class="atab-panel" data-apanel="controls" hidden>
+            <dl class="keymap">
+              <dt>W A S D / &uarr;&larr;&darr;&rarr;</dt><dd>move</dd>
+              <dt>drag</dt><dd>look around</dd>
+              <dt>Q / E</dt><dd>descend / ascend</dd>
+              <dt>Shift</dt><dd>boost speed</dd>
+              <dt>scroll</dt><dd>zoom (focal length / iso zoom)</dd>
+              <dt>H</dt><dd>hide the interface</dd>
+            </dl>
+            <p class="mini">Drop or import any image to remake the world. The <strong>world</strong> tab shapes the terrain; the <strong>capture</strong> tab controls stills. Click the minimap to enlarge it.</p>
+          </div>
         </div>
       </header>
 
@@ -99,6 +118,8 @@
                 <option value="clear">clear</option>
                 <option value="fog" selected>fog</option>
                 <option value="rain">rain</option>
+                <option value="snow">snow</option>
+                <option value="storm">storm</option>
               </select>
             </label>
             <label class="ctl">
@@ -162,7 +183,7 @@
             <p class="tab-note">live view runs lean; captures render at these settings for one frame.</p>
 
             <label class="ctl">
-              <span class="ctl-name">focal length <em id="v-focal"></em></span>
+              <span class="ctl-name"><span id="focal-label">focal length</span> <em id="v-focal"></em></span>
               <input id="focal" type="range" min="14" max="180" value="20" />
             </label>
             <label class="ctl">
@@ -171,7 +192,7 @@
             </label>
             <label class="ctl">
               <span class="ctl-name">capture resolution <em id="v-cap"></em></span>
-              <input id="cap" type="range" min="100" max="300" value="100" />
+              <input id="cap" type="range" min="25" max="300" value="100" />
             </label>
             <label class="ctl ctl-row">
               <span class="ctl-name">depth of field</span>

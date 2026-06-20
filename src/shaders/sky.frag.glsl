@@ -7,6 +7,7 @@ uniform vec3  uSkyTop;     // biome zenith colour
 uniform vec3  uSkyHorizon; // biome horizon colour
 uniform vec3  uSunColor;
 uniform float uNight;      // 0 day -> 1 night
+uniform float uEarth;      // 1 = draw the Earth (lunar biome)
 
 varying vec3 vDir;
 
@@ -50,6 +51,38 @@ void main() {
       float star = step(0.997, s) * smoothstep(0.4, 1.0, uNight) * smoothstep(0.2, 0.5, dir.y);
       col += vec3(star);
     }
+  }
+
+  // --- lunar biome: airless black sky, permanent stars + a hanging Earth ---
+  if (uEarth > 0.5) {
+    // stars everywhere above the horizon (no atmosphere to wash them out)
+    if (dir.y > 0.05) {
+      vec2 g = floor(dir.xz * 140.0);
+      float s = fract(sin(dot(g, vec2(12.99, 78.23))) * 43758.55);
+      col += vec3(step(0.992, s)) * smoothstep(0.05, 0.3, dir.y);
+    }
+    // Earth: a fixed blue marble high in one quarter of the sky
+    vec3 earthDir = normalize(vec3(0.45, 0.62, -0.65));
+    float ed = dot(dir, earthDir);
+    float disc = smoothstep(0.9965, 0.9978, ed);
+    if (disc > 0.0) {
+      // crude continents/ocean from noise-ish bands on the disc surface.
+      // 'local' is the offset from the Earth's centre direction; use its 2D
+      // projection (xy) for the surface pattern lookups.
+      vec3 local = dir - earthDir;
+      vec2 luv = local.xy * vec2(1.0, 1.0);
+      float land = step(0.5, fract(sin(dot(floor(luv * 600.0), vec2(7.1, 3.7))) * 4181.0));
+      vec3 ocean = vec3(0.16, 0.34, 0.62);
+      vec3 landC = vec3(0.30, 0.46, 0.32);
+      vec3 cloud = vec3(0.85, 0.88, 0.92);
+      float cl = step(0.7, fract(sin(dot(floor(luv * 250.0), vec2(2.3, 9.4))) * 9133.0));
+      vec3 earthCol = mix(mix(ocean, landC, land), cloud, cl * 0.6);
+      // simple day/night terminator across the marble
+      float lit = smoothstep(-0.3, 0.4, dot(earthDir, normalize(uLightDir)));
+      col = mix(col, earthCol * (0.3 + 0.7 * lit), disc);
+    }
+    float glow = pow(max(ed, 0.0), 600.0) * 0.25;       // faint halo
+    col += vec3(0.3, 0.45, 0.7) * glow;
   }
 
   // band the sky to match the terrain's posterised look, but dither the
